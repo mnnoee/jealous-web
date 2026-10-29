@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jealous-web"
+description = "Web page checker: timings and sizes of the page and every resource (httpstat-style, JSON report)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "mnnoee", email = "me@mnnoee.ru" }]
+keywords = ["http", "httpstat", "performance", "timings", "web", "curl", "diagnostics"]
+dynamic = ["version"]
+
+dependencies = []
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Natural Language :: Russian",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: System :: Networking :: Monitoring",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/mnnoee/jealous-web"
+Source = "https://github.com/mnnoee/jealous-web"
+Issues = "https://github.com/mnnoee/jealous-web/issues"
+Changelog = "https://github.com/mnnoee/jealous-web/blob/master/CHANGELOG.md"
+
+[project.scripts]
+jealous-web = "webcheck.cli:main"
+
+# Версия берётся из webcheck.constants.VERSION - единственный источник истины.
+# constants.py читается статически (ast), поэтому версия не требует импорта
+# пакета во время сборки. __init__.py реэкспортирует её как __version__.
+[tool.setuptools.dynamic]
+version = { attr = "webcheck.constants.VERSION" }
+
+# Плоский layout (без src/): дашборд Jealous Moon запускает
+# web_checker.py напрямую из корня репозитория, поэтому пакет
+# обязан лежать рядом с ним.
+[tool.setuptools.packages.find]
+include = ["webcheck*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: live network checks (deselected by default)",
+]
+addopts = "-m 'not integration'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Тестовые фикстуры - это сырые HTML/CSS/заголовки, верстка там произвольная.
+"tests/*" = ["E501", "E402"]
