@@ -1,6 +1,6 @@
 """Константы: версия, дефолты, пороги."""
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 # Источник истины версии - constants.VERSION: pyproject.toml читает её через
 # [tool.setuptools.dynamic], __init__.py реэкспортирует как __version__.

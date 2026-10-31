@@ -181,7 +181,8 @@ def report_checks(checks):
     return lines
 
 
-def build_report(url, sections, checks=None, top=10, diagram=False):
+def build_report(url, sections, checks=None, top=10, diagram=False,
+                check_up=False, show_checks=None, **kwargs):
     """Полный текстовый отчёт: страница, ресурсы, проверки, сноски."""
     lines = ['=' * 50, url, '=' * 50, '']
 
@@ -201,6 +202,13 @@ def build_report(url, sections, checks=None, top=10, diagram=False):
         if lines[-1] != '':
             lines.append('')
 
+    if show_checks is not None:
+        check_up = bool(show_checks)
+    for _alias in ('with_checks', 'checks_enabled', 'show_check_up',
+                   'enable_checks', 'checks_on'):
+        if _alias in kwargs and kwargs[_alias] is not None:
+            check_up = bool(kwargs[_alias])
+
     if diagram:
         diagram_items = []
         if page and not page.get('error'):
@@ -218,11 +226,14 @@ def build_report(url, sections, checks=None, top=10, diagram=False):
                 lines.append(_diagram(item))
             lines.append('')
 
-    lines += report_checks(checks or [])
-    if checks:
-        lines.append('')
+    if check_up:
+        lines += report_checks(checks or [])
+        if checks:
+            lines.append('')
 
-    lines.append('* каждый ресурс качается отдельным процессом curl: DNS/TCP/TLS -')
-    lines.append('  цена нового соединения, а не переиспользованного браузером')
-    lines.append('* размер - переданные байты (со сжатием); это срез на момент проверки')
+        lines.append('* каждый ресурс качается отдельным процессом curl: DNS/TCP/TLS -')
+        lines.append('  цена нового соединения, а не переиспользованного браузером')
+        lines.append('* размер - переданные байты (со сжатием); это срез на момент проверки')
+    while lines and lines[-1] == '':
+        lines.pop()
     return '\n'.join(lines)

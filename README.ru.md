@@ -5,7 +5,7 @@
 [![CI](https://github.com/mnnoee/jealous-web/actions/workflows/ci.yml/badge.svg)](https://github.com/mnnoee/jealous-web/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)](CHANGELOG.md)
 
 > Часть набора инструментов [Jealous Moon](https://github.com/mnnoee) —
 > офлайн-диагностики серверов и доменов.
@@ -106,6 +106,7 @@ jealous-web --version
 | `--insecure` | не проверять TLS-сертификат |
 | `--user-agent UA` | свой User-Agent |
 | `--diagram` | httpstat-диаграммы по каждому запросу |
+| `--check-up` | перекрёстные проверки и пояснения |
 | `--json [PATH]` | машиночитаемый отчёт (по умолчанию `report.json`) |
 
 Без флагов запускаются обе секции. Один флаг на секцию — это будущие чекбоксы
@@ -163,7 +164,7 @@ STAT  TYPE         VER        DNS   TCP   TLS  TTFB  TOTAL     SIZE  URL
 ```json
 {
   "meta": {
-    "version": "0.1.0",
+    "version": "0.1.1",
     "url": "example.com",
     "final_url": "https://example.com/",
     "checked_at": "2026-10-29T12:00:00+00:00",

@@ -65,6 +65,8 @@ def build_parser():
                     help=f'User-Agent (по умолчанию {USER_AGENT})')
     ap.add_argument('--diagram', action='store_true',
                     help='печатать httpstat-диаграммы по каждому запросу')
+    ap.add_argument('--check-up', action='store_true', dest='check_up',
+                    help='печатать перекрёстные проверки и пояснения')
     ap.add_argument('--json', nargs='?', const='report.json', metavar='PATH',
                     help='записать машиночитаемый JSON-отчёт '
                          '(по умолчанию report.json)')
@@ -103,7 +105,8 @@ def main(argv=None):
     )
 
     print(report.build_report(args.url, sections, found_checks,
-                              top=args.top, diagram=args.diagram))
+                              top=args.top, diagram=args.diagram,
+                              check_up=args.check_up))
 
     if args.json:
         path = json_export.write_json_report(

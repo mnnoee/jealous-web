@@ -154,4 +154,4 @@ class VersionTest(unittest.TestCase):
         with self.assertRaises(SystemExit), \
                 contextlib.redirect_stdout(io.StringIO()) as out:
             cli.main(['--version'])
-        self.assertIn('0.1.0', out.getvalue())
+        self.assertIn('0.1.1', out.getvalue())
