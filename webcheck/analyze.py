@@ -18,11 +18,7 @@ def human_size(size):
 
 
 def breakdown(timings):
-    """Разложить тайминги curl на фазы (в мс).
-
-    redirect - отдельно: время редиректов пересекается с dns/tcp/tls
-    последующих запросов, поэтому сумму фаз сравнивать с total нельзя.
-    """
+    """Разложить тайминги curl на фазы"""
     timings = timings or {}
     dns = ms(timings.get('time_namelookup'))
     connect = ms(timings.get('time_connect'))
@@ -43,7 +39,7 @@ def breakdown(timings):
 
 
 def is_css(result):
-    """CSS ли это по content-type или расширению (серверы врут и так, и так)."""
+    """CSS ли это по content-type или расширению"""
     content_type = (result.content_type or '').lower()
     if 'css' in content_type:
         return True
@@ -84,7 +80,7 @@ def slowest(results, top=DEFAULT_TOP):
 
 
 def result_dict(result):
-    """FetchResult -> сериализуемый элемент отчёта (ресурс или страница)."""
+    """FetchResult -> сериализуемый элемент отчёта"""
     return {
         'url': result.url,
         'final_url': result.final_url,

@@ -19,6 +19,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Natural Language :: English",
     "Natural Language :: Russian",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",

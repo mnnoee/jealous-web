@@ -1,7 +1,4 @@
-"""URL-утилиты: абсолютные ссылки, ключ дедупликации, тип по расширению.
-
-Здесь нет сети: чистые функции, которые легко тестировать.
-"""
+"""URL-утилиты"""
 
 import codecs
 import re
@@ -46,12 +43,6 @@ _TYPE_BY_EXT = {
 
 
 def prepare_url(value):
-    """Аргумент командной строки -> URL, пригодный для curl.
-
-    - без схемы добавляем https:// (чтобы `jealous-web example.com` работало);
-    - не-ASCII хост переводим в punycode: curl не всегда собран с IDN,
-      а `смешнявки.рф` иначе может уйти в сеть как есть.
-    """
     value = (value or '').strip()
     if not value:
         return value
@@ -84,11 +75,6 @@ def prepare_url(value):
 
 
 def make_absolute(base, href):
-    """Ссылка из HTML/CSS -> абсолютный http(s) URL без фрагмента.
-
-    Возвращает None для пустых, служебных (mailto:, data:, javascript:)
-    и любых не-http схем.
-    """
     if not href:
         return None
     href = href.strip()
@@ -107,7 +93,6 @@ def make_absolute(base, href):
 
 
 def normalize(url):
-    """Ключ дедупликации: схема, хост, путь, query (фрагмент уже отброшен)."""
     p = urlparse(url)
     path = p.path or '/'
     if len(path) > 1 and path.endswith('/'):
@@ -116,7 +101,6 @@ def normalize(url):
 
 
 def host_of(url):
-    """Хост без порта в нижнем регистре (для сравнения «свой/сторонний»)."""
     try:
         return (urlparse(url).hostname or '').lower()
     except ValueError:
@@ -124,7 +108,6 @@ def host_of(url):
 
 
 def guess_type(url):
-    """Тип ресурса по расширению пути; 'other', если не угадали."""
     path = urlparse(url).path.lower()
     dot = path.rfind('.')
     if dot == -1:
@@ -133,11 +116,6 @@ def guess_type(url):
 
 
 def decode_body(body, content_type=''):
-    """Байты -> текст: BOM, charset из заголовка, <meta charset>, utf-8.
-
-    Без этого страницы в windows-1251/koi8-r дают битые ссылки: HTML
-    разбирается, но URL в нём уже испорчены.
-    """
     if not body:
         return ''
     if body.startswith(codecs.BOM_UTF8):

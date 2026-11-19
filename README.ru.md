@@ -1,274 +1,214 @@
 # jealous-web
 
-[README in English](README.md)
-
 [![CI](https://github.com/mnnoee/jealous-web/actions/workflows/ci.yml/badge.svg)](https://github.com/mnnoee/jealous-web/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](CHANGELOG.md)
 
-> Часть набора инструментов [Jealous Moon](https://github.com/mnnoee) —
-> офлайн-диагностики серверов и доменов.
+> Часть набора [Jealous Moon](https://github.com/mnnoee) для диагностики серверов и доменов.
 
-Проверка одной страницы и **всех её ресурсов**: тайминги в стиле `httpstat`
-(DNS / TCP / TLS / TTFB / передача), размеры, версия HTTP, заголовки, редиректы
-и перекрёстные проверки. Не краулер: открывает одну страницу и вытаскивает
-только то, что реально упомянуто в HTML и CSS.
+Проверка одной страницы и всех ресурсов, на которые она ссылается. Инструмент показывает тайминги в стиле httpstat (DNS, TCP, TLS, TTFB, передача), переданные размеры, HTTP-версию, заголовки, редиректы и эвристические перекрёстные проверки. Это не краулер. Открывается одна страница и только то, что реально упомянуто в HTML и CSS.
 
-Самодостаточный CLI-инструмент: пакет чистых функций `webcheck/` + тонкая
-обёртка `web_checker.py`. Загрузка — через `curl`, как `dig`/`openssl` в
-остальных модулях набора: без зависимостей Python.
+> [README in English](README.md)
 
 ## Возможности
 
-- **Секция страницы** (`--page`): статус, версия HTTP, content-type,
-  переданный размер, удалённый IP:порт, цепочка редиректов, тайминги по фазам,
-  заголовки (`server`, `content-encoding`, `cache-control`, HSTS).
-- **Секция ресурсов** (`--assets`): `script`, `link` (stylesheet /
-  modulepreload / preload с `as` / icon / manifest), `img` и `srcset`,
-  `source`, `video`/`audio`/`track`/`embed`, `object`, `iframe`, `poster`,
-  inline-`<style>` и `style=""`, `url()` и `@import` внутри CSS.
-- **Волны CSS**: ссылки из CSS раскрываются рекурсивно (`--css-depth`, по
-  умолчанию 3), внешние `@import` тоже находятся.
-- **Реалистичный запрос**: `Accept-Encoding` (gzip/br), HTTP/2, свой
-  User-Agent (`--user-agent`), опционально `--insecure`.
-- **Размеры — переданные байты** (со сжатием), а не распакованный HTML:
-  видно, сколько страница реально тянет по сети.
-- **Кодировки**: charset берётся из заголовка или `<meta charset>`, поэтому
-  страницы в windows-1251/koi8-r не дают битых ссылок.
-- **Перекрёстные проверки** (эвристики): нет HSTS, ответ без сжатия,
-  дублирующиеся заголовки, ресурсы 4xx/5xx, смешанный контент, сторонние
-  хосты, тяжёлые ресурсы, медленный TTFB, HTTP/1.1, отсутствие `cache-control`.
-- **Изоляция секций**: страница не загрузилась — `error` в секции, отчёт и
-  JSON всё равно собираются.
-- **IDN**: `смешнявки.рф` на сетевой границе превращается в punycode.
-- **JSON-отчёт** (`--json [PATH]`) — `meta` + `page` + `assets` +
-  `cross_checks`, как у остальных модулей набора.
+- **Секция страницы** (`--page`): статус, HTTP-версия, тип контента, переданные байты, удалённый IP:порт, цепочка редиректов, тайминги по фазам и выбранные заголовки.
+- **Секция ресурсов** (`--assets`): script, link (stylesheet, modulepreload, preload с `as`, icon, manifest), img и srcset, source, video/audio/track/embed, object, iframe, poster, inline `<style>` и `style=""`.
+- **Волны CSS** для `url()` и `@import`, рекурсивно до `--css-depth` (по умолчанию 3).
+- **Реалистичные запросы** со сжатием, HTTP/2, своим User-Agent и необязательным `--insecure`.
+- **Переданные размеры**, а не распакованное тело.
+- **Кодировки** из заголовка, `<meta charset>` или BOM, чтобы страницы windows-1251 не давали битые ссылки.
+- **Перекрёстные проверки**: HSTS, сжатие, дублирующиеся заголовки, заголовки безопасности, ресурсы 4xx/5xx, смешанный контент, сторонние хосты, тяжёлые ресурсы, медленный TTFB, HTTP/1.1 и отсутствие `cache-control`.
+- **Детект антибот-защиты**. JS-челленджи и CAPTCHA распознаются, результат помечается как неполный.
+- **Изоляция секций**. Ошибка загрузки страницы попадает в `error` секции, отчёт и JSON всё равно формируются.
+- **IDN**. Не-ASCII хосты переводятся в punycode на сетевой границе.
+- **Русский и английский интерфейс** (`--lang`).
+- **JSON-экспорт** (`--json [PATH]`) с `meta`, `page`, `assets` и `cross_checks`.
 
-> **Важно:** вывод — эвристика, а не приговор. Пороги (TTFB 600 мс, страница
-> 2 МБ, ресурс 500 КБ, HSTS 180 дней) — повод проверить, а не вердикт.
-> Каждый ресурс качается отдельным процессом `curl`, поэтому DNS/TCP/TLS
-> показывают цену **нового** соединения, а не переиспользованного браузером.
-> JS не исполняется: для SPA список ресурсов будет неполным. Тело страницы
-> больше 5 МБ не разбирается (защита от гигантских ответов).
+## Требования
 
-## Зависимости
+- Python 3.9 или новее.
+- `curl` с поддержкой HTTP/2. Проверить можно через `curl --version`.
 
-- Python 3 (только стандартная библиотека).
-- `curl` в PATH, собранный с HTTP/2 (нужен для `--http2` и таймингов).
-  Проверка: `curl --version`.
+У Python-пакета нет сторонних зависимостей.
 
 ## Установка
 
-Пока не на PyPI (публикация планируется). Ставится напрямую с GitHub:
+Пока не на PyPI (публикация планируется). Установка напрямую с GitHub:
 
 ```bash
 pip install git+https://github.com/mnnoee/jealous-web.git
 ```
 
-После установки доступна команда `jealous-web`. Можно запускать и без
-установки — прямо из клона репозитория:
+Или запуск прямо из клона:
 
 ```bash
 python3 web_checker.py example.com
 ```
 
+После установки доступна команда `jealous-web`.
+
 ## Использование
 
-```
-jealous-web example.com                     # страница + все ресурсы
+```bash
+jealous-web example.com                     # страница и все ресурсы
 jealous-web example.com --page              # только страница
 jealous-web example.com --assets            # только ресурсы
 jealous-web example.com --filter css,js,font
 jealous-web example.com --css-depth 1
 jealous-web example.com --diagram           # httpstat-диаграммы
-jealous-web example.com --json              # отчёт в report.json
-jealous-web example.com --json out.json
-jealous-web --version
+jealous-web example.com --check-up          # проверки и пояснения
+jealous-web example.com --json out.json     # машиночитаемый отчёт
+jealous-web --help                          # все опции
 ```
 
-Схему можно не указывать: без неё подставляется `https://`.
+Схему можно не указывать. Без неё подставляется `https://`.
 
-### Опции
+## Опции
 
 | Флаг | Описание |
 |------|----------|
 | `--page` | секция страницы |
 | `--assets` | секция ресурсов |
-| `--all` | обе секции (поведение по умолчанию) |
-| `-j`, `--workers N` | параллельных загрузок (по умолчанию 10) |
-| `-t`, `--timeout SEC` | таймаут на запрос (по умолчанию 20) |
-| `--css-depth N` | глубина раскрытия CSS (по умолчанию 3) |
-| `--filter LIST` | типы ресурсов через запятую: `css,js,img,font,...` |
-| `--top N` | сколько медленных ресурсов показывать (по умолчанию 10) |
+| `--all` | обе секции, поведение по умолчанию |
+| `-j`, `--workers N` | параллельных загрузок, по умолчанию 10 |
+| `-t`, `--timeout SEC` | таймаут на запрос, по умолчанию 20 |
+| `--css-depth N` | глубина раскрытия `@import` и `url()`, по умолчанию 3 |
+| `--filter LIST` | типы ресурсов, например `css,js,img,font` |
+| `--top N` | сколько медленных ресурсов показывать, по умолчанию 10 |
 | `--no-http2` | не просить HTTP/2 |
-| `--no-compress` | не просить сжатие (`Accept-Encoding: identity`) |
+| `--no-compress` | запросить `Accept-Encoding: identity` |
 | `--insecure` | не проверять TLS-сертификат |
 | `--user-agent UA` | свой User-Agent |
-| `--diagram` | httpstat-диаграммы по каждому запросу |
-| `--check-up` | перекрёстные проверки и пояснения |
-| `--json [PATH]` | машиночитаемый отчёт (по умолчанию `report.json`) |
+| `--diagram` | печатать httpstat-диаграммы |
+| `--check-up` | печатать проверки и пояснения |
+| `--json [PATH]` | JSON-отчёт, по умолчанию `report.json` |
+| `--lang auto\|ru\|en` | язык вывода, по умолчанию `auto` по локали |
 
-Без флагов запускаются обе секции. Один флаг на секцию — это будущие чекбоксы
-UI один-в-один, без промежуточного маппинга.
+## Что проверяется
+
+Страница:
+
+- код статуса, HTTP-версия, тип контента и переданный размер;
+- цепочка редиректов и финальный URL;
+- тайминги DNS, TCP, TLS, TTFB, передачи и общего времени;
+- HSTS и его `max-age`, сжатие, дублирующиеся заголовки;
+- заголовки безопасности, HTTP/1.1, медленный TTFB;
+- страницы с антибот-защитой и JS-челленджем.
+
+Ресурсы:
+
+- ошибки загрузки и статусы 4xx/5xx;
+- смешанный контент на HTTPS-странице;
+- сторонние хосты;
+- `cache-control` у статических ресурсов;
+- ресурсы тяжелее 500 КБ;
+- общий вес страницы больше 2 МБ.
+
+Все выводы - эвристика, а не приговор. Каждый ресурс качается отдельным процессом `curl`, поэтому DNS, TCP и TLS показывают цену нового соединения, а не переиспользованного браузером.
+
+## Антибот-защита
+
+Некоторые сайты отвечают `200 OK` и небольшим HTML-фрагментом, который проверяет браузер через JavaScript, cookie или CAPTCHA. Обычный HTTP-клиент такую проверку не проходит. Инструмент распознаёт типовые признаки и явно показывает это:
+
+```text
+  защита:      антибот-защита (JS challenge/CAPTCHA)
+```
+
+В этом случае тело страницы - не настоящая страница, а список ресурсов неполный. В JSON появляется `page.bot_protection` с уровнем (`high` или `possible`) и списком общих признаков. Названия сайтов не используются.
+
+## Язык интерфейса
+
+Язык вывода берётся из локали или задаётся флагом `--lang {auto,ru,en}`.
 
 ## Пример отчёта
 
-```
+```text
 ==================================================
-example.com
+https://example.com
 ==================================================
 
 --- Страница ---
   статус:      200
   HTTP:        2
   финальный:   https://example.com/
-  тип:         text/html; charset=UTF-8
-  размер:      12.1K (передано)
+  тип:         text/html; charset=utf-8
+  размер:      12.0K (передано)
   удалённый:   203.0.113.10:443
-  редиректы:   1 (301 https://example.com/)
-  DNS:         7 ms
-  TCP:         60 ms
-  TLS:         65 ms
-  TTFB:        250 ms
-  передача:    30 ms
-  всего:       395 ms
+  DNS:         8 ms
+  TCP:         15 ms
+  TLS:         25 ms
+  TTFB:        15 ms
+  передача:    0 ms
+  всего:       63 ms
   server:      nginx
   encoding:    gzip
-  cache:       max-age=600
-  hsts:        max-age=31536000
 
---- Ресурсы (4) ---
+--- Ресурсы (2) ---
 STAT  TYPE         VER        DNS   TCP   TLS  TTFB  TOTAL     SIZE  URL
 ------------------------------------------------------------------------
- 200  css          HTTP/2      18    61    64   190    330     3.3K  https://example.com/site.css
- 200  js           HTTP/2      19    62    65   191    331     1.0K  https://example.com/app.js
- 200  img          HTTP/2      17    60    63   188    328     5.5K  https://example.com/logo.png
-
---- По типам ---
-  img          n=1   size=5.5K
-  css          n=1   size=3.3K
-  js           n=1   size=1.0K
-
---- Проверки ---
-  [info] у статических ресурсов нет cache-control
-  [info] нет заголовков безопасности: referrer-policy
-
-* каждый ресурс качается отдельным процессом curl: DNS/TCP/TLS -
-  цена нового соединения, а не переиспользованного браузером
-* размер - переданные байты (со сжатием); это срез на момент проверки
+ 200  css          HTTP/2       0     0     0     1      1      20B  https://example.com/a.css
+ 200  js           HTTP/2       0     0     0     1      1      19B  https://example.com/app.js
 ```
 
 ## JSON-отчёт
 
-```json
-{
-  "meta": {
-    "version": "0.1.1",
-    "url": "example.com",
-    "final_url": "https://example.com/",
-    "checked_at": "2026-10-29T12:00:00+00:00",
-    "elapsed_sec": 1.31,
-    "sections_run": ["page", "assets"],
-    "status": 200,
-    "http_version": "2",
-    "bytes_page": 12112,
-    "resources_total": 13,
-    "resources_ok": 13,
-    "resources_failed": 0,
-    "bytes_total": 87000
-  },
-  "page": {
-    "url": "https://example.com/",
-    "final_url": "https://example.com/",
-    "status": 200,
-    "http_version": "2",
-    "content_type": "text/html; charset=UTF-8",
-    "size": 12112,
-    "timings_ms": {"dns": 7, "tcp": 60, "tls": 65,
-                   "redirect": 0, "ttfb": 250,
-                   "transfer": 30, "total": 395},
-    "redirects": [{"status": 301, "location": "https://example.com/"}],
-    "headers": {"server": ["nginx"], "cache-control": ["max-age=600"]},
-    "error": null
-  },
-  "assets": {
-    "items": [
-      {"url": "https://example.com/site.css", "final_url": "https://example.com/site.css",
-       "type": "css", "status": 200, "http_version": "2",
-       "content_type": "text/css", "size": 3379,
-       "timings_ms": {"dns": 18, "tcp": 61, "tls": 64,
-                      "redirect": 0, "ttfb": 190,
-                      "transfer": 0, "total": 330},
-       "redirects": [], "headers": {}, "error": null}
-    ],
-    "by_type": [{"type": "css", "count": 1, "size": 3379, "failed": 0}],
-    "slowest": [{"url": "https://example.com/site.css", "type": "css",
-                 "status": 200, "size": 3379, "total_ms": 330,
-                 "starttransfer_ms": 320}],
-    "total_size": 3379,
-    "error": null
-  },
-  "cross_checks": [
-    {"severity": "info", "message": "у статических ресурсов нет cache-control"}
-  ]
-}
+`--json [PATH]` пишет машиночитаемый отчёт. Без пути создаётся `report.json` в текущем каталоге. В отчёте четыре ключа верхнего уровня:
+
+- `meta` с версией, URL, финальным URL, временем проверки, длительностью, списком секций, статусом, HTTP-версией, объёмами и счётчиками ресурсов.
+- `page` со статусом, `timings_ms`, заголовками, редиректами и `bot_protection`.
+- `assets` с `items`, `by_type`, `slowest`, `total_size` и `error`.
+- `cross_checks` с `severity` и `message` для каждой находки.
+
+`page.bot_protection` появляется только при детекте антибот-страницы. В нём уровень (`high` или `possible`) и список общих признаков.
+
+## Структура проекта
+
+```text
+web_checker.py          тонкая CLI-обёртка
+webcheck/
+  __init__.py           версия пакета
+  constants.py          версия, дефолты, пороги
+  i18n.py               определение языка и t()
+  locales/
+    ru.py               русские строки
+    en.py               английские строки
+  cli.py                argparse и main()
+  core.py               оркестрация страницы и ресурсов
+  fetch.py              один запрос curl и его тайминги
+  extract.py            ресурсы из HTML и CSS
+  urls.py               URL-хелперы, IDN, дедупликация, кодировки
+  analyze.py            фазы, типы, самые медленные, размеры
+  checks.py             перекрёстные проверки
+  bot.py                детект антибот-защиты и JS-челленджей
+  report.py             человекочитаемый отчёт
+  json_export.py        JSON-экспорт
+tests/                  юнит-тесты без сети
 ```
 
-Каждая секция имеет поле `error` (`null` = ок). Пустой список ресурсов —
-валидный результат, а не ошибка.
+## Тесты
 
-## Структура
-
-```
-web_checker.py           # тонкая обёртка
-webcheck/                # пакет анализа
-  constants.py           # VERSION, дефолты, пороги
-  urls.py                # URL, IDN, дедупликация, кодировки
-  extract.py             # HTMLParser + CSS url()/@import
-  fetch.py               # curl -w: тайминги, заголовки, редиректы, тело
-  analyze.py             # разбивка фаз, сводки, топ медленных
-  checks.py              # перекрёстные проверки
-  report.py              # человекочитаемый отчёт (RU)
-  json_export.py         # машиночитаемый отчёт (--json)
-  core.py                # оркестрация: страница -> ресурсы -> волны CSS
-  cli.py                 # argparse, main(), выбор секций
-tests/                   # юнит-тесты без сети + интеграционные (маркер)
-pyproject.toml           # упаковка, версия, pytest, ruff
-.github/workflows/ci.yml # CI: матрица 3.9-3.13, lint + тесты + smoke
-LICENSE / NOTICE         # GPL-3.0-or-later
-CHANGELOG.md             # история изменений
-RELEASING.md             # процесс выпуска версий
-CONTRIBUTING.md          # как участвовать в разработке
+```bash
+python -m pytest                 # юнит-тесты без сети
+pytest -m integration            # живые проверки, по умолчанию отключены
+ruff check .
 ```
 
-Направление зависимостей одностороннее: `cli -> core -> (fetch, extract,
-analyze, checks) -> urls/constants`. Новая проверка = функция в `checks.py`,
-новый тип ресурса = ветка в `extract.py` + тест.
+Интеграционные тесты ходят в сеть и помечены маркером `integration`.
 
-## Тестирование
+## Ограничения
 
-- **Юнит-тесты** (по умолчанию, `pytest`): `curl` замокан, сеть не нужна,
-  стабильны в CI. Фикстуры только на generic-доменах (`example.com`).
-- **Интеграционные тесты** (вручную, `pytest -m integration`): реальный
-  запрос к `example.com`.
-
-```
-pytest                 # юниты
-pytest -m integration  # интеграции (ходьба в сеть)
-pytest -m ""           # всё вместе
-```
+- JavaScript не исполняется. SPA-страницы будут выглядеть почти пустыми.
+- Антибот-страницы HTTP-клиент пройти не может. Они распознаются и помечаются как неполный результат.
+- Тела страниц больше 5 МБ не разбираются.
+- Тайминги ресурсов включают новое соединение на каждый ресурс.
+- Выводы - эвристика. Это повод проверить дальше, а не финальный вердикт.
 
 ## Участие в разработке
 
 См. [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Идеи и предложения
-
-Есть идея, чего не хватает? Открывайте issue — новые проверки, режимы
-(например, переиспользование соединений через `curl --parallel`), форматы
-выгрузки и интеграции приветствуются.
-
 ## Лицензия
 
-GPL-3.0-or-later. См. [LICENSE](LICENSE) и [NOTICE](NOTICE).
+GPL-3.0-or-later. Подробности в [LICENSE](LICENSE) и [NOTICE](NOTICE).

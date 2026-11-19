@@ -3,10 +3,11 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from . import checks, extract
+from . import bot, checks, extract
 from .analyze import by_type, result_dict, slowest
 from .constants import DEFAULT_CSS_DEPTH, DEFAULT_TIMEOUT, DEFAULT_TOP, DEFAULT_WORKERS, USER_AGENT
 from .fetch import FetchResult, fetch
+from .i18n import t
 from .urls import decode_body, guess_type, make_absolute, normalize
 
 ASSET_SECTIONS = ('page', 'assets')
@@ -22,6 +23,9 @@ def page_section(main):
         'remote_port': main.remote_port,
         'num_redirects': main.num_redirects,
     })
+    protection = bot.detect(main)
+    if protection:
+        data['bot_protection'] = protection
     return data
 
 
@@ -54,19 +58,15 @@ def collect_assets(main, workers=DEFAULT_WORKERS, timeout=DEFAULT_TIMEOUT,
                    http2=True, insecure=False, compress=True,
                    user_agent=USER_AGENT, css_depth=DEFAULT_CSS_DEPTH,
                    type_filter=None):
-    """Найти ресурсы в HTML и докачать их волнами (CSS раскрывается глубже).
-
-    Возвращает (список FetchResult, ошибка или None).
-    """
+    """Найти ресурсы в HTML и докачать их волнами"""
     if not main.body:
-        return [], ('тело страницы не получено или это не HTML/CSS - '
-                    'ресурсы не из чего достать')
+        return [], t('core.no_body')
 
     try:
         parser = extract.ResourceExtractor()
         parser.feed(decode_body(main.body, main.content_type))
     except Exception as exc:  # битый HTML не должен ронять отчёт
-        return [], f'не удалось разобрать HTML: {exc}'
+        return [], t('core.html_parse', err=exc)
 
     base = main.final_url
     if parser.base_href:
@@ -148,8 +148,6 @@ def _is_css(result):
 
 def assets_section(items, error=None, top=DEFAULT_TOP):
     ok = [item for item in items if not item.error]
-    # Потоки завершаются в произвольном порядке: сортируем по URL, чтобы
-    # отчёт и JSON были воспроизводимы от прогона к прогону.
     ordered = sorted(items, key=lambda item: item.url)
     return {
         'items': [result_dict(item) for item in ordered],
@@ -164,11 +162,7 @@ def run(url, workers=DEFAULT_WORKERS, timeout=DEFAULT_TIMEOUT, http2=True,
         insecure=False, compress=True, user_agent=USER_AGENT,
         css_depth=DEFAULT_CSS_DEPTH, type_filter=None,
         run_sections=ASSET_SECTIONS, top=DEFAULT_TOP):
-    """Проверить страницу. Возвращает (sections, cross_checks, elapsed_sec).
-
-    Секции изолированы: ошибка загрузки страницы не бросает исключение,
-    а попадает в error соответствующей секции.
-    """
+    """Возвращает sections, cross_checks, elapsed_sec"""
     started = time.time()
     sections = {}
 
@@ -179,7 +173,7 @@ def run(url, workers=DEFAULT_WORKERS, timeout=DEFAULT_TIMEOUT, http2=True,
             sections['page'] = _error_page(url, main.error)
         if 'assets' in run_sections:
             sections['assets'] = assets_section(
-                [], f'страница не загружена: {main.error}', top)
+                [], t('core.page_not_loaded', err=main.error), top)
         return sections, [], time.time() - started
 
     page = page_section(main)

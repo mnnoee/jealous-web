@@ -10,10 +10,10 @@ Copyright (C) 2026 mnnoee
 Сторонние зависимости (библиотеки Python) распространяются на условиях
 своих собственных лицензий:
 
-  - стандартная библиотека Python 3 — PSF License
-  - pytest (только для разработки) — MIT License
+  - стандартная библиотека Python 3 - PSF License
+  - pytest (только для разработки) - MIT License
 
 Внешние утилиты, вызываемые через subprocess, не входят в состав
 дистрибутива и лицензируются независимо:
 
-  - curl (libcurl) — curl License (MIT-подобная)
+  - curl (libcurl) - curl License (MIT-подобная)

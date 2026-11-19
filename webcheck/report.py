@@ -1,7 +1,8 @@
-"""Человекочитаемый текстовый отчёт (RU)."""
+"""Человекочитаемый текстовый отчёт."""
 
 from .analyze import human_size
 from .checks import severity_label
+from .i18n import t
 
 HTTPS_DIAGRAM = """
   DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer
@@ -74,36 +75,41 @@ def _diagram(item):
 
 
 def report_page(page):
-    lines = ['--- Страница ---']
+    lines = [t('rep.page')]
     if page.get('error'):
-        lines.append(f"  [ошибка] {page['error']}")
+        lines.append(t('rep.error_line', msg=page['error']))
         return lines
 
-    lines.append(f"  статус:      {page.get('status')}")
-    lines.append(f"  HTTP:        {page.get('http_version') or '?'}")
+    lines.append(t('rep.status', v=page.get('status')))
+    lines.append(t('rep.http', v=page.get('http_version') or '?'))
     if page.get('final_url') and page.get('final_url') != page.get('url'):
-        lines.append(f"  финальный:   {page['final_url']}")
-    lines.append(f"  тип:         {page.get('content_type') or '(не указан)'}")
-    lines.append(f"  размер:      {human_size(page.get('size'))} (передано)")
+        lines.append(t('rep.final', v=page['final_url']))
+    lines.append(t('rep.type', v=page.get('content_type') or t('rep.not_specified')))
+    lines.append(t('rep.size', v=human_size(page.get('size'))))
     remote = page.get('remote_ip') or '?'
     if page.get('remote_port'):
         remote = f"{remote}:{page['remote_port']}"
-    lines.append(f"  удалённый:   {remote}")
+    lines.append(t('rep.remote', v=remote))
+
+    protection = page.get('bot_protection') or {}
+    if protection:
+        key = 'rep.bot_high' if protection.get('level') == 'high' else 'rep.bot_possible'
+        lines.append(t(key))
 
     redirects = page.get('redirects') or []
     if redirects:
         chain = ' -> '.join(
             f"{r.get('status')} {r.get('location')}" for r in redirects)
-        lines.append(f"  редиректы:   {len(redirects)} ({_short(chain, 90)})")
+        lines.append(t('rep.redirects', n=len(redirects), chain=_short(chain, 90)))
 
     timings = page.get('timings_ms') or {}
-    lines.append(f"  DNS:         {timings.get('dns', 0)} ms")
-    lines.append(f"  TCP:         {timings.get('tcp', 0)} ms")
+    lines.append(t('rep.dns', v=timings.get('dns', 0)))
+    lines.append(t('rep.tcp', v=timings.get('tcp', 0)))
     if timings.get('tls'):
-        lines.append(f"  TLS:         {timings['tls']} ms")
-    lines.append(f"  TTFB:        {timings.get('ttfb', 0)} ms")
-    lines.append(f"  передача:    {timings.get('transfer', 0)} ms")
-    lines.append(f"  всего:       {timings.get('total', 0)} ms")
+        lines.append(t('rep.tls', v=timings['tls']))
+    lines.append(t('rep.ttfb', v=timings.get('ttfb', 0)))
+    lines.append(t('rep.transfer', v=timings.get('transfer', 0)))
+    lines.append(t('rep.total', v=timings.get('total', 0)))
 
     headers = page.get('headers') or {}
     for name, label in _HEADER_KEYS:
@@ -115,12 +121,12 @@ def report_page(page):
 
 def report_assets(assets, top=10):
     items = (assets or {}).get('items') or []
-    lines = [f'--- Ресурсы ({len(items)}) ---']
+    lines = [t('rep.assets', n=len(items))]
     if assets.get('error'):
-        lines.append(f"  [ошибка] {assets['error']}")
+        lines.append(t('rep.error_line', msg=assets['error']))
         return lines
     if not items:
-        lines.append('  (ничего не найдено)')
+        lines.append(t('rep.nothing_found'))
         return lines
 
     header = (f'{"STAT":>4}  {"TYPE":<12} {"VER":<8} '
@@ -150,7 +156,7 @@ def report_by_type(assets):
     groups = (assets or {}).get('by_type') or []
     if not groups:
         return []
-    lines = ['--- По типам ---']
+    lines = [t('rep.by_type')]
     for group in groups:
         failed = group.get('failed') or 0
         tail = f'  failed={failed}' if failed else ''
@@ -163,7 +169,7 @@ def report_slowest(assets, top=10):
     items = (assets or {}).get('slowest') or []
     if not items:
         return []
-    lines = [f'--- Самые медленные (до {top}) ---']
+    lines = [t('rep.slowest', n=top)]
     for item in items:
         lines.append(f"  {item.get('total_ms', 0):>6} ms  "
                      f"{item.get('type', '?'):<10} "
@@ -174,7 +180,7 @@ def report_slowest(assets, top=10):
 def report_checks(checks):
     if not checks:
         return []
-    lines = ['--- Проверки ---']
+    lines = [t('rep.checks')]
     for check in checks:
         lines.append(f"  {severity_label(check.get('severity', 'info'))} "
                      f"{check.get('message')}")
@@ -216,7 +222,7 @@ def build_report(url, sections, checks=None, top=10, diagram=False,
         diagram_items += (assets or {}).get('items') or []
         shown = [item for item in diagram_items if not item.get('error')]
         if shown:
-            lines.append('--- Диаграммы ---')
+            lines.append(t('rep.diagrams'))
             for item in shown:
                 version = (f"HTTP/{item['http_version']}"
                            if item.get('http_version') else '?')
@@ -231,9 +237,9 @@ def build_report(url, sections, checks=None, top=10, diagram=False,
         if checks:
             lines.append('')
 
-        lines.append('* каждый ресурс качается отдельным процессом curl: DNS/TCP/TLS -')
-        lines.append('  цена нового соединения, а не переиспользованного браузером')
-        lines.append('* размер - переданные байты (со сжатием); это срез на момент проверки')
+        lines.append(t('rep.note1'))
+        lines.append(t('rep.note2'))
+        lines.append(t('rep.note3'))
     while lines and lines[-1] == '':
         lines.pop()
     return '\n'.join(lines)

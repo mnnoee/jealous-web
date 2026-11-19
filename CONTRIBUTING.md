@@ -21,8 +21,7 @@ ruff check .
 
 - Код проходит тесты и линтер
 - Описание PR содержит контекст: что было, что стало, зачем
-- Новая проверка = функция в `webcheck/checks.py` + тест, а не разрастание
-  `core.py`; новый тип ресурса = ветка в `webcheck/extract.py` + тест
+- Новая проверка = функция в `webcheck/checks.py` + тест, а не разрастание `core.py`; новый тип ресурса = ветка в `webcheck/extract.py` + тест
 
 ## Структура проекта
 
@@ -30,40 +29,37 @@ ruff check .
 web_checker.py           тонкая CLI-обёртка
 webcheck/
   constants.py           VERSION, дефолты, пороги
+  i18n.py                определение языка, t()
+  locales/
+    ru.py                русские строки
+    en.py                английские строки
   urls.py                URL, IDN, дедупликация, кодировки
   extract.py             HTMLParser + CSS url()/@import
   fetch.py               curl -w: тайминги, заголовки, редиректы, тело
   analyze.py             разбивка фаз, сводки, топ медленных
   checks.py              перекрёстные проверки
-  report.py              человекочитаемый отчёт (RU)
+  bot.py                 детект антибот-защиты и JS-челленджей
+  report.py              человекочитаемый отчёт
   json_export.py         машиночитаемый отчёт (--json)
   core.py                оркестрация: страница -> ресурсы -> волны CSS
   cli.py                 argparse, main(), выбор секций
 tests/                   юнит- (моки) + интеграционные тесты
 ```
 
-Направление зависимостей одностороннее: `cli -> core -> (fetch, extract,
-analyze, checks) -> urls/constants`.
+Направление зависимостей одностороннее: `cli -> core -> (fetch, extract, analyze, checks, bot) -> urls/constants`; `i18n` используется в CLI, отчёте, проверках и ядре.
 
 ## Важно: конфиденциальность
 
-Модуль ходит в сеть, поэтому в Issue/PR легко случайно раскрыть адрес
-клиентского сайта или внутреннего сервера. **Обязательно** перед публикацией:
+Модуль ходит в сеть, поэтому в Issue/PR легко случайно раскрыть адрес клиентского сайта или внутреннего сервера. **Обязательно** перед публикацией:
 
 - заменяйте реальные адреса на `example.com` / `example.ru`
-- не прикладывайте `report.json` из рабочего прогона — в нём реальные URL,
-  заголовки и IP
-- в тестах и фикстурах — только generic-домены
+- не прикладывайте `report.json` из рабочего прогона - в нём реальные URL, заголовки и IP
+- в тестах и фикстурах - только generic-домены
 
-Юнит-тесты должны работать без сети (мок `subprocess.run` и `fetch`);
-всё, что ходит в сеть, помечается маркером `integration` и по умолчанию
-пропускается (`pytest.ini_options.addopts` в `pyproject.toml`).
+Юнит-тесты должны работать без сети (мок `subprocess.run` и `fetch`); всё, что ходит в сеть, помечается маркером `integration` и по умолчанию пропускается (`pytest.ini_options.addopts` в `pyproject.toml`).
 
 ## Версионирование и релизы
 
-- SemVer: `MAJOR.MINOR.PATCH`. Источник истины — `VERSION` в
-  `webcheck/constants.py`; `pyproject.toml` читает её автоматически,
-  руками версию нигде дублировать не нужно.
-- Каждое изменение — запись в `CHANGELOG.md` (Keep a Changelog).
-- Релиз: обновить `VERSION` -> запись в CHANGELOG -> тег `vX.Y.Z`
-  (подробнее в [RELEASING.md](RELEASING.md)).
+- SemVer: `MAJOR.MINOR.PATCH`. Источник истины - `VERSION` в `webcheck/constants.py`; `pyproject.toml` читает её автоматически, руками версию нигде дублировать не нужно.
+- Каждое изменение - запись в `CHANGELOG.md` (Keep a Changelog).
+- Релиз: обновить `VERSION` -> запись в CHANGELOG -> тег `vX.Y.Z` (подробнее в [RELEASING.md](RELEASING.md)).

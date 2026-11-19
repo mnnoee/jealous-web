@@ -1,14 +1,8 @@
-"""Извлечение ресурсов из HTML и CSS.
-
-Не краулер: берём только то, что реально упомянуто в разметке, и не
-исполняем JS. Для SPA это значит «почти ничего» - ограничение честно
-описано в README.
-"""
+"""Извлечение ресурсов из HTML и CSS"""
 
 import re
 from html.parser import HTMLParser
 
-# rel -> тип; для preload тип зависит от as="...".
 _PRELOAD_TYPES = {
     'style': 'css',
     'script': 'js',
@@ -29,11 +23,7 @@ CSS_IMPORT_RE = re.compile(
 
 
 def srcset_urls(value):
-    """URL из srcset="a.jpg 1x, b.jpg 2x".
-
-    Запятые внутри data:-URL отсекаются раньше (make_absolute), поэтому
-    простой split по запятой здесь достаточен.
-    """
+    """URL из srcset="a.jpg 1x, b.jpg 2x"."""
     urls = []
     if not value:
         return urls
